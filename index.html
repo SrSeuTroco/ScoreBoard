@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Placar de Vôlei PRO</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            display: flex;
+            height: 100vh;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            transition: flex-direction 0.5s ease;
+        }
+
+        body.reversed {
+            flex-direction: row-reverse;
+        }
+
+        .team {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .team.blue { background-color: #005f9e; }
+        .team.red { background-color: #c92a2a; }
+
+        .team:active { opacity: 0.9; }
+
+        .score {
+            font-size: 35vw;
+            font-weight: bold;
+            color: white;
+            line-height: 1;
+            text-shadow: 4px 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .btn-minus {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 2rem;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        #settings-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 8px;
+            cursor: pointer;
+            z-index: 100;
+        }
+
+        #settings-modal {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 100;
+            width: 250px;
+        }
+
+        .modal-btn {
+            padding: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: 0.2s;
+        }
+
+        .modal-btn.swap { background-color: #555; }
+        
+        /* Cor para quando o som estiver desligado */
+        .modal-btn.muted { background-color: #888; text-decoration: line-through; }
+
+        #victory-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            color: white;
+            text-align: center;
+            animation: fadeIn 0.5s;
+        }
+
+        #victory-screen h1 { font-size: 5rem; }
+        #victory-screen p { font-size: 2rem; margin-bottom: 30px; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="settings-btn" onclick="toggleMenu()">⚙️</div>
+    <div id="settings-modal">
+        <label>Pontos para vencer: <input type="number" id="target-score" value="25"></label>
+        <button class="modal-btn" onclick="applySettings()">Salvar Objetivo</button>
+        <button class="modal-btn swap" onclick="toggleSides()">Inverter Lados ⇄</button>
+        <button class="modal-btn" id="sound-btn" onclick="toggleSound()">Som: Ligado 🔊</button>
+        <button class="modal-btn" onclick="resetScore()">Zerar Placar</button>
+        <button class="modal-btn" onclick="goBack()">Voltar ao Início</button>
+    </div>
+
+    <div id="victory-screen">
+        <h1 id="winner-name">TIME AZUL</h1>
+        <p>GANHOU EBAAAAAAA!</p>
+        <button class="modal-btn" onclick="resetScore()" style="padding: 20px 50px; font-size: 1.5rem;">Novo Jogo</button>
+    </div>
+
+    <div class="team blue" id="teamA" onclick="addPoint('A')">
+        <div class="score" id="scoreA">0</div>
+        <button class="btn-minus" onclick="subPoint(event, 'A')">-1</button>
+    </div>
+
+    <div class="team red" id="teamB" onclick="addPoint('B')">
+        <div class="score" id="scoreB">0</div>
+        <button class="btn-minus" onclick="subPoint(event, 'B')">-1</button>
+    </div>
+
+    <script>
+        let scoreA = 0;
+        let scoreB = 0;
+        let target = 25;
+        let soundEnabled = true; // Variável para controlar o som
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // --- SISTEMA DE SOM COM TRAVA ---
+        function playScoreSound() {
+            if (!soundEnabled) return; // Se estiver mudo, cancela a função aqui
+            
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const t = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            g.gain.setValueAtTime(0.2, t);
+            g.gain.linearRampToValueAtTime(0, t + 0.4);
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(330, t);
+            osc.frequency.setValueAtTime(440, t + 0.1);
+            osc.connect(g); g.connect(audioCtx.destination);
+            osc.start(t); osc.stop(t + 0.4);
+        }
+
+        function playSadSound() {
+            if (!soundEnabled) return; // Cancela se estiver mudo
+            
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const t = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            g.gain.setValueAtTime(0.3, t);
+            g.gain.linearRampToValueAtTime(0, t + 0.5);
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(200, t);
+            osc.frequency.linearRampToValueAtTime(80, t + 0.5);
+            osc.connect(g); g.connect(audioCtx.destination);
+            osc.start(t); osc.stop(t + 0.5);
+        }
+
+        function playFanfare() {
+            if (!soundEnabled) return; // Cancela se estiver mudo
+            
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const t = audioCtx.currentTime;
+            
+            const melody = [
+                { f: 392.00, start: 0, dur: 0.15 },    
+                { f: 523.25, start: 0.15, dur: 0.15 }, 
+                { f: 659.25, start: 0.30, dur: 0.15 }, 
+                { f: 783.99, start: 0.45, dur: 0.35 }, 
+                { f: 659.25, start: 0.85, dur: 0.15 }, 
+                { f: 783.99, start: 1.05, dur: 1.00 }  
+            ];
+
+            melody.forEach(note => {
+                const osc = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                
+                osc.type = 'sawtooth'; 
+                osc.frequency.setValueAtTime(note.f, t + note.start);
+                
+                g.gain.setValueAtTime(0, t + note.start);
+                g.gain.linearRampToValueAtTime(0.4, t + note.start + 0.02);
+                g.gain.setValueAtTime(0.4, t + note.start + note.dur - 0.05);
+                g.gain.linearRampToValueAtTime(0, t + note.start + note.dur);
+                
+                osc.connect(g); g.connect(audioCtx.destination);
+                osc.start(t + note.start); 
+                osc.stop(t + note.start + note.dur + 0.1);
+            });
+        }
+
+        // --- LÓGICA DO PLACAR ---
+        function updateDisplay() {
+            document.getElementById('scoreA').innerText = scoreA;
+            document.getElementById('scoreB').innerText = scoreB;
+        }
+
+        function checkWin() {
+            if (scoreA >= target && (scoreA - scoreB) >= 2) {
+                showVictory("TIME AZUL", "#005f9e");
+            } else if (scoreB >= target && (scoreB - scoreA) >= 2) {
+                showVictory("TIME VERMELHO", "#c92a2a");
+            }
+        }
+
+        function showVictory(name, color) {
+            const screen = document.getElementById('victory-screen');
+            document.getElementById('winner-name').innerText = name;
+            screen.style.backgroundColor = color;
+            screen.style.display = 'flex';
+            playFanfare();
+        }
+
+        function addPoint(team) {
+            if(document.getElementById('victory-screen').style.display === 'flex') return;
+            playScoreSound();
+            if (team === 'A') scoreA++;
+            if (team === 'B') scoreB++;
+            updateDisplay();
+            checkWin();
+        }
+
+        function subPoint(event, team) {
+            event.stopPropagation();
+            if ((team === 'A' && scoreA > 0) || (team === 'B' && scoreB > 0)) {
+                playSadSound();
+                if (team === 'A') scoreA--;
+                if (team === 'B') scoreB--;
+                updateDisplay();
+            }
+        }
+
+        // --- MENU E CONTROLES ---
+        function toggleSides() {
+            document.body.classList.toggle('reversed');
+            resetScore();
+            document.getElementById('settings-modal').style.display = 'none';
+        }
+
+        // Função do botão de som
+        function toggleSound() {
+            soundEnabled = !soundEnabled; // Inverte o valor (se era true vira false)
+            const btn = document.getElementById('sound-btn');
+            
+            if (soundEnabled) {
+                btn.innerText = "Som: Ligado 🔊";
+                btn.classList.remove('muted');
+            } else {
+                btn.innerText = "Som: Desligado 🔇";
+                btn.classList.add('muted');
+            }
+        }
+
+        function toggleMenu() {
+            const modal = document.getElementById('settings-modal');
+            if (modal.style.display === 'flex') {
+                modal.style.display = 'none';
+            } else {
+                modal.style.display = 'flex';
+                document.getElementById('target-score').value = target;
+            }
+        }
+
+        function applySettings() {
+            const newVal = parseInt(document.getElementById('target-score').value);
+            if (!isNaN(newVal) && newVal > 0) {
+                target = newVal;
+                toggleMenu();
+                resetScore(); 
+            }
+        }
+
+        function resetScore() {
+            scoreA = 0; 
+            scoreB = 0;
+            updateDisplay();
+            document.getElementById('victory-screen').style.display = 'none';
+            document.getElementById('settings-modal').style.display = 'none';
+        }
+
+        function goBack() { alert("Voltando..."); }
+    </script>
+</body>
+</html>
