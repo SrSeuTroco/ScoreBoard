@@ -361,6 +361,28 @@
         }
 
         function goBack() { alert("Voltando..."); }
+
+        // --- CÓDIGO ESPIÃO PARA O CONTROLE BLUETOOTH ---
+        const spyBox = document.createElement('div');
+        spyBox.style.position = 'fixed';
+        spyBox.style.bottom = '10px';
+        spyBox.style.left = '10px';
+        spyBox.style.backgroundColor = 'white';
+        spyBox.style.color = 'black';
+        spyBox.style.padding = '10px';
+        spyBox.style.zIndex = '9999';
+        spyBox.style.borderRadius = '5px';
+        spyBox.innerText = 'Aperte um botão no controle...';
+        document.body.appendChild(spyBox);
+
+        window.addEventListener('keydown', function(event) {
+            spyBox.innerText = "Botão apertado: " + event.key + " | Código: " + event.code;
+            
+            // Impede que o botão faça a página rolar
+            if(event.key !== "F11") { 
+                event.preventDefault(); 
+            }
+        });
     </script>
 </body>
 </html>
