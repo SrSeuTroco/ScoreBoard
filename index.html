@@ -3,31 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Debug Lelong</title>
+    <title>Espião Lelong 7989</title>
     <style>
-        body { background: #222; color: #0f0; font-family: monospace; padding: 20px; font-size: 1.5rem; }
-        #log { color: #fff; font-size: 2rem; margin-top: 20px; display: block; }
+        body { 
+            background: #222; 
+            color: #fff; 
+            font-family: monospace; 
+            padding: 20px; 
+            font-size: 1.2rem; 
+            /* Altura gigante para permitir que a tela "role" se o controle tentar rolar */
+            height: 300vh; 
+        }
+        h2 { color: #0f0; }
+        #log { margin-top: 20px; }
     </style>
 </head>
 <body>
-    1. Toque em qualquer lugar desta tela primeiro para focar.<br><br>
-    2. Aperte os botões do controle Lelong.<br>
-    <span id="log">Aguardando...</span>
+    <h2>Testando Lelong 7989</h2>
+    <p>Aperte as setinhas, o coração e a câmera.</p>
+    <div id="log">Aguardando comandos...<br></div>
 
     <script>
-        // Confirma que a janela pegou o foco
-        window.addEventListener('click', () => {
-            document.getElementById('log').innerText = "Tela focada! Pode testar os botões.";
+        const logDiv = document.getElementById('log');
+        
+        function logarComando(msg, cor) {
+            // Adiciona o comando mais recente no topo da lista
+            logDiv.innerHTML = `<strong style="color:${cor}">${msg}</strong><br>` + logDiv.innerHTML;
+        }
+
+        // 1. Ouve os botões que rolam a tela (Setinhas)
+        window.addEventListener('wheel', (e) => {
+            if (e.deltaY > 0) {
+                logarComando("SCROLL PARA BAIXO (Seta p/ Cima ou Baixo)", "cyan");
+            } else if (e.deltaY < 0) {
+                logarComando("SCROLL PARA CIMA (Seta p/ Cima ou Baixo)", "cyan");
+            }
+            if (e.deltaX > 0) logarComando("SCROLL DIREITA", "cyan");
+            if (e.deltaX < 0) logarComando("SCROLL ESQUERDA", "cyan");
         });
 
-        // Captura tudo o que o controle mandar
+        // 2. Ouve o botão do meio (Coração)
+        window.addEventListener('click', (e) => {
+            logarComando(`CLIQUE NA TELA (Botão Coração)`, "magenta");
+        });
+
+        // 3. Ouve o botão da Câmera (Volume / Mute)
         window.addEventListener('keydown', (e) => {
-            e.preventDefault(); // Tenta bloquear o comportamento padrão do SO
-            document.getElementById('log').innerHTML = `
-                e.key: <strong style="color:yellow">${e.key}</strong><br>
-                e.code: <strong style="color:cyan">${e.code}</strong><br>
-                e.keyCode: <strong style="color:magenta">${e.keyCode}</strong>
-            `;
+            logarComando(`BOTÃO DE MÍDIA: ${e.key}`, "yellow");
         });
     </script>
 </body>
