@@ -3,167 +3,219 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Placar de Vôlei PRO</title>
+    <title>Placar de Vôlei Elite</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
         
-        /* O touch-action: none é a mágica que impede o celular de rolar a página */
         body { 
             display: flex; height: 100vh; font-family: 'Arial', sans-serif; 
-            overflow: hidden; transition: flex-direction 0.5s ease; background-color: #111; 
+            overflow: hidden; background-color: #000; 
             touch-action: none; 
         }
 
-        body.reversed { flex-direction: row-reverse; }
+        .team { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: background 0.2s; }
+        .team.blue { background-color: #004a7c; }
+        .team.red { background-color: #a31d1d; }
 
-        .team { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: background 0.2s; }
-        .team.blue { background-color: #005f9e; }
-        .team.red { background-color: #c92a2a; }
-        .team:active { opacity: 0.9; }
+        .score { font-size: 35vw; font-weight: bold; color: white; line-height: 1; text-shadow: 4px 4px 15px rgba(0,0,0,0.5); }
 
-        .score { font-size: 35vw; font-weight: bold; color: white; line-height: 1; text-shadow: 4px 4px 10px rgba(0,0,0,0.3); }
+        /* Controles Meio Opacos */
+        .controls { position: absolute; z-index: 100; opacity: 0.4; transition: opacity 0.3s; display: flex; gap: 10px; }
+        .controls:hover { opacity: 1; }
+        #settings-btn { top: 20px; left: 20px; }
+        #top-right-controls { top: 20px; right: 20px; }
 
-        .btn-minus { margin-top: 20px; padding: 15px 40px; font-size: 2rem; background-color: rgba(255, 255, 255, 0.2); color: white; border: 2px solid white; border-radius: 10px; cursor: pointer; transition: 0.2s; }
+        .icon-btn { width: 50px; height: 50px; background-color: rgba(0, 0, 0, 0.6); color: white; font-size: 24px; display: flex; justify-content: center; align-items: center; border-radius: 10px; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); }
 
-        .icon-btn { width: 50px; height: 50px; background-color: rgba(0, 0, 0, 0.5); color: white; font-size: 26px; display: flex; justify-content: center; align-items: center; border-radius: 8px; cursor: pointer; transition: 0.2s; z-index: 100; }
-        .icon-btn:hover { background-color: rgba(0, 0, 0, 0.8); }
+        /* Overlay de Reset (3 bolinhas) */
+        #reset-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); display: none; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 300; color: white;
+        }
+        .dots-container { display: flex; gap: 20px; margin-top: 20px; }
+        .dot { width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; transition: 0.3s; }
+        .dot.active { background-color: white; transform: scale(1.2); }
 
-        #settings-btn { position: absolute; top: 20px; left: 20px; }
-        #top-right-controls { position: absolute; top: 20px; right: 20px; display: flex; gap: 15px; z-index: 100; }
+        #victory-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 200; color: white; text-align: center; }
+        #victory-screen h1 { font-size: 6rem; }
 
-        #settings-modal { position: absolute; top: 80px; left: 20px; background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: none; flex-direction: column; gap: 15px; z-index: 100; width: 250px; }
-        .modal-btn { padding: 10px; font-size: 1rem; cursor: pointer; background-color: #333; color: white; border: none; border-radius: 5px; transition: 0.2s; }
-        .modal-btn.swap { background-color: #555; }
+        #settings-modal { position: absolute; top: 80px; left: 20px; background-color: white; padding: 20px; border-radius: 10px; display: none; flex-direction: column; gap: 15px; z-index: 100; width: 250px; }
+        .modal-btn { padding: 12px; font-size: 1rem; cursor: pointer; background-color: #222; color: white; border: none; border-radius: 5px; }
 
-        #victory-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 200; color: white; text-align: center; animation: fadeIn 0.5s; }
-        #victory-screen h1 { font-size: 5rem; }
-        #victory-screen p { font-size: 2rem; margin-bottom: 30px; }
-
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
-        @media (max-width: 600px) { .score { font-size: 45vw; } body { flex-direction: column; } body.reversed { flex-direction: column-reverse; } #top-right-controls { top: 10px; right: 10px; gap: 10px; } #settings-btn { top: 10px; left: 10px; } .icon-btn { width: 45px; height: 45px; font-size: 22px; } }
+        @media (max-width: 600px) { 
+            .score { font-size: 45vw; } 
+            body { flex-direction: column; } 
+        }
     </style>
 </head>
 <body>
 
-    <div class="icon-btn" id="settings-btn" onclick="toggleMenu()">⚙️</div>
-    <div id="top-right-controls">
+    <div class="controls" id="settings-btn">
+        <div class="icon-btn" onclick="toggleMenu()">⚙️</div>
+    </div>
+    
+    <div class="controls" id="top-right-controls">
         <div class="icon-btn" id="sound-btn" onclick="toggleSound()">🔊</div>
-        <div class="icon-btn" id="fullscreen-btn" onclick="toggleFullScreen()">⛶</div>
+        <div class="icon-btn" onclick="toggleFullScreen()">⛶</div>
     </div>
 
     <div id="settings-modal">
-        <label>Pontos para vencer: <input type="number" id="target-score" value="25"></label>
+        <label>Pontos para vencer: <input type="number" id="target-score" value="25" style="width: 100%; padding: 5px;"></label>
         <button class="modal-btn" onclick="applySettings()">Salvar Objetivo</button>
-        <button class="modal-btn swap" onclick="toggleSides()">Inverter Lados ⇄</button>
         <button class="modal-btn" onclick="resetScore()">Zerar Placar</button>
-        <button class="modal-btn" onclick="goBack()">Voltar ao Início</button>
+    </div>
+
+    <div id="reset-overlay">
+        <h2>Resetar Placar?</h2>
+        <div class="dots-container">
+            <div class="dot" id="dot1"></div>
+            <div class="dot" id="dot2"></div>
+            <div class="dot" id="dot3"></div>
+        </div>
+        <p style="margin-top: 20px; opacity: 0.7;">Pressione o meio mais <span id="clicks-left">2</span> vezes</p>
     </div>
 
     <div id="victory-screen">
-        <h1 id="winner-name">TIME AZUL</h1>
-        <p>GANHOU EBAAAAAAA!</p>
-        <button class="modal-btn" onclick="resetScore()" style="padding: 20px 50px; font-size: 1.5rem;">Novo Jogo</button>
+        <h1 id="winner-name">AZUL</h1>
+        <p style="font-size: 2rem;">GANHOU EBAAAAAAA!</p>
+        <p style="margin-top: 20px; opacity: 0.8;">Toque em qualquer lugar para reiniciar</p>
     </div>
 
-    <div class="team blue" id="teamA" onclick="addPoint('A')">
+    <div class="team blue" onclick="handleTeamClick('A')">
         <div class="score" id="scoreA">0</div>
-        <button class="btn-minus" onclick="subPoint(event, 'A')">-1</button>
     </div>
 
-    <div class="team red" id="teamB" onclick="addPoint('B')">
+    <div class="team red" onclick="handleTeamClick('B')">
         <div class="score" id="scoreB">0</div>
-        <button class="btn-minus" onclick="subPoint(event, 'B')">-1</button>
     </div>
 
     <script>
-        let scoreA = 0; let scoreB = 0; let target = 25; let soundEnabled = true;
+        let scoreA = 0, scoreB = 0, target = 25, soundEnabled = true, resetCount = 0;
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        // --- SONS ---
-        function playScoreSound() { if (!soundEnabled) return; if (audioCtx.state === 'suspended') audioCtx.resume(); const t = audioCtx.currentTime; const osc = audioCtx.createOscillator(); const g = audioCtx.createGain(); g.gain.setValueAtTime(0.2, t); g.gain.linearRampToValueAtTime(0, t + 0.4); osc.type = 'square'; osc.frequency.setValueAtTime(330, t); osc.frequency.setValueAtTime(440, t + 0.1); osc.connect(g); g.connect(audioCtx.destination); osc.start(t); osc.stop(t + 0.4); }
-        function playSadSound() { if (!soundEnabled) return; if (audioCtx.state === 'suspended') audioCtx.resume(); const t = audioCtx.currentTime; const osc = audioCtx.createOscillator(); const g = audioCtx.createGain(); g.gain.setValueAtTime(0.3, t); g.gain.linearRampToValueAtTime(0, t + 0.5); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, t); osc.frequency.linearRampToValueAtTime(80, t + 0.5); osc.connect(g); g.connect(audioCtx.destination); osc.start(t); osc.stop(t + 0.5); }
-        function playFanfare() { if (!soundEnabled) return; if (audioCtx.state === 'suspended') audioCtx.resume(); const t = audioCtx.currentTime; const melody = [ { f: 392.00, start: 0, dur: 0.15 }, { f: 523.25, start: 0.15, dur: 0.15 }, { f: 659.25, start: 0.30, dur: 0.15 }, { f: 783.99, start: 0.45, dur: 0.35 }, { f: 659.25, start: 0.85, dur: 0.15 }, { f: 783.99, start: 1.05, dur: 1.00 } ]; melody.forEach(note => { const osc = audioCtx.createOscillator(); const g = audioCtx.createGain(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(note.f, t + note.start); g.gain.setValueAtTime(0, t + note.start); g.gain.linearRampToValueAtTime(0.4, t + note.start + 0.02); g.gain.setValueAtTime(0.4, t + note.start + note.dur - 0.05); g.gain.linearRampToValueAtTime(0, t + note.start + note.dur); osc.connect(g); g.connect(audioCtx.destination); osc.start(t + note.start); osc.stop(t + note.start + note.dur + 0.1); }); }
-
-        // --- LÓGICA ---
-        function updateDisplay() { document.getElementById('scoreA').innerText = scoreA; document.getElementById('scoreB').innerText = scoreB; }
-        function checkWin() { if (scoreA >= target && (scoreA - scoreB) >= 2) { showVictory("TIME AZUL", "#005f9e"); } else if (scoreB >= target && (scoreB - scoreA) >= 2) { showVictory("TIME VERMELHO", "#c92a2a"); } }
-        function showVictory(name, color) { const screen = document.getElementById('victory-screen'); document.getElementById('winner-name').innerText = name; screen.style.backgroundColor = color; screen.style.display = 'flex'; playFanfare(); }
-        
-        function addPoint(team) { 
-            if(document.getElementById('victory-screen').style.display === 'flex') return; 
-            playScoreSound(); 
-            if (team === 'A') scoreA++; if (team === 'B') scoreB++; 
-            updateDisplay(); checkWin(); 
-        }
-        function subPoint(event, team) { 
-            if(event) event.stopPropagation(); 
-            if ((team === 'A' && scoreA > 0) || (team === 'B' && scoreB > 0)) { playSadSound(); if (team === 'A') scoreA--; if (team === 'B') scoreB--; updateDisplay(); } 
+        // --- ÁUDIO ---
+        function beep(freq, dur) {
+            if (!soundEnabled) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            g.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+            osc.connect(g); g.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + dur);
         }
 
-        // --- CONTROLES ---
-        function toggleFullScreen() { if (!document.fullscreenElement) { document.documentElement.requestFullscreen().catch(err => console.log(err)); } else { if (document.exitFullscreen) document.exitFullscreen(); } }
+        function playFanfare() {
+            if (!soundEnabled) return;
+            [392, 523, 659, 783].forEach((f, i) => setTimeout(() => beep(f, 0.5), i * 150));
+        }
+
+        // --- LÓGICA CORE ---
+        function updateDisplay() {
+            document.getElementById('scoreA').innerText = scoreA;
+            document.getElementById('scoreB').innerText = scoreB;
+        }
+
+        function addPoint(team) {
+            cancelReset();
+            if(document.getElementById('victory-screen').style.display === 'flex') { resetScore(); return; }
+            beep(440, 0.3);
+            team === 'A' ? scoreA++ : scoreB++;
+            updateDisplay();
+            checkWin();
+        }
+
+        function subPoint(team) {
+            cancelReset();
+            if(document.getElementById('victory-screen').style.display === 'flex') { resetScore(); return; }
+            beep(220, 0.3);
+            if (team === 'A' && scoreA > 0) scoreA--;
+            if (team === 'B' && scoreB > 0) scoreB--;
+            updateDisplay();
+        }
+
+        function checkWin() {
+            if (scoreA >= target && (scoreA - scoreB) >= 2) showVictory("AZUL", "#004a7c");
+            else if (scoreB >= target && (scoreB - scoreA) >= 2) showVictory("VERMELHO", "#a31d1d");
+        }
+
+        function showVictory(name, color) {
+            const screen = document.getElementById('victory-screen');
+            document.getElementById('winner-name').innerText = name;
+            screen.style.backgroundColor = color;
+            screen.style.display = 'flex';
+            playFanfare();
+        }
+
+        function resetScore() {
+            scoreA = 0; scoreB = 0; resetCount = 0;
+            updateDisplay();
+            document.getElementById('victory-screen').style.display = 'none';
+            document.getElementById('settings-modal').style.display = 'none';
+            hideResetOverlay();
+        }
+
+        // --- RESET COM SEGURANÇA ---
+        function handleResetStep() {
+            resetCount++;
+            beep(600 + (resetCount * 100), 0.2);
+            showResetOverlay();
+            if (resetCount >= 3) {
+                resetScore();
+            } else {
+                document.getElementById('clicks-left').innerText = 3 - resetCount;
+                document.getElementById(`dot${resetCount}`).classList.add('active');
+            }
+        }
+
+        function showResetOverlay() { document.getElementById('reset-overlay').style.display = 'flex'; }
+        function hideResetOverlay() { 
+            document.getElementById('reset-overlay').style.display = 'none'; 
+            resetCount = 0;
+            document.querySelectorAll('.dot').forEach(d => d.classList.remove('active'));
+        }
+        function cancelReset() { if(resetCount > 0) hideResetOverlay(); }
+
+        // --- CONTROLES DE INTERFACE ---
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().then(() => {
+                    if(screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {});
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
         function toggleSound() { soundEnabled = !soundEnabled; document.getElementById('sound-btn').innerText = soundEnabled ? "🔊" : "🔇"; }
-        function toggleSides() { document.body.classList.toggle('reversed'); resetScore(); document.getElementById('settings-modal').style.display = 'none'; }
-        function toggleMenu() { const modal = document.getElementById('settings-modal'); modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex'; document.getElementById('target-score').value = target; }
-        function applySettings() { const newVal = parseInt(document.getElementById('target-score').value); if (!isNaN(newVal) && newVal > 0) { target = newVal; toggleMenu(); resetScore(); } }
-        function resetScore() { scoreA = 0; scoreB = 0; updateDisplay(); document.getElementById('victory-screen').style.display = 'none'; document.getElementById('settings-modal').style.display = 'none'; }
-        function goBack() { alert("Voltando..."); }
+        function toggleMenu() { const m = document.getElementById('settings-modal'); m.style.display = m.style.display === 'flex' ? 'none' : 'flex'; }
+        function applySettings() { target = parseInt(document.getElementById('target-score').value) || 25; toggleMenu(); resetScore(); }
+        function handleTeamClick(t) { cancelReset(); addPoint(t); }
 
-        // =========================================================
-        // A GAMBIARRA: LENDO O "ARRASTAR" DA TELA DO CONTROLE
-        // =========================================================
-        
-        let startY = 0;
-        let startX = 0;
+        // --- MAPEAMENTO DO CONTROLE LELONG (TOUCH SWIPE) ---
+        let startY = 0, startX = 0;
+        window.addEventListener('touchstart', e => { startY = e.touches[0].clientY; startX = e.touches[0].clientX; }, {passive: false});
+        window.addEventListener('touchend', e => {
+            let diffY = startY - e.changedTouches[0].clientY;
+            let diffX = startX - e.changedTouches[0].clientX;
 
-        // Quando o controle "tocar" na tela (apertar a seta)
-        window.addEventListener('touchstart', function(e) {
-            startY = e.touches[0].clientY;
-            startX = e.touches[0].clientX;
-        }, {passive: false});
-
-        // Quando o controle "soltar" o arrasto
-        window.addEventListener('touchend', function(e) {
-            if(document.getElementById('victory-screen').style.display === 'flex') return;
-            
-            // Pega onde o dedo parou
-            let endY = e.changedTouches[0].clientY;
-            let endX = e.changedTouches[0].clientX;
-
-            // Calcula a distância do movimento
-            let diffY = startY - endY;
-            let diffX = startX - endX;
-
-            // Só ativa o comando se o arrasto for grande o suficiente (evita toques acidentais)
-            if (Math.abs(diffY) > 50 || Math.abs(diffX) > 50) {
-                
-                // Se arrastou mais na vertical do que na horizontal
+            if (Math.abs(diffY) > 40 || Math.abs(diffX) > 40) {
                 if (Math.abs(diffY) > Math.abs(diffX)) {
-                    if (diffY > 0) {
-                        // Arrastou pra CIMA (Seta pra Cima)
-                        addPoint('A'); // Ponto Azul
-                    } else {
-                        // Arrastou pra BAIXO (Seta pra Baixo)
-                        addPoint('B'); // Ponto Vermelho
-                    }
+                    diffY > 0 ? subPoint('B') : subPoint('A'); // Cima: -Red | Baixo: -Blue
                 } else {
-                    // Arrastou mais na horizontal
-                    if (diffX > 0) {
-                        // Arrastou pra ESQUERDA (Seta pra Esquerda)
-                        subPoint(null, 'A'); // Tira Azul
-                    } else {
-                        // Arrastou pra DIREITA (Seta pra Direita)
-                        subPoint(null, 'B'); // Tira Vermelho
-                    }
+                    diffX > 0 ? addPoint('A') : addPoint('B'); // Esquerda: +Blue | Direita: +Red
                 }
             }
         }, {passive: false});
 
-        // Botão da Câmera (Mute)
-        window.addEventListener('keydown', function(event) {
-            if (event.key === "AudioVolumeMute" || event.key === "VolumeUp" || event.key === "VolumeDown") {
-                toggleSound();
-            }
+        // Botões Físicos (Enter e Mídia)
+        window.addEventListener('keydown', e => {
+            if(e.key === "Enter") { handleResetStep(); e.preventDefault(); }
+            else if(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) { cancelReset(); }
+            else if(e.key.includes("Volume") || e.key.includes("Mute")) { toggleSound(); e.preventDefault(); }
         });
     </script>
 </body>
